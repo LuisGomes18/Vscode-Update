@@ -1,4 +1,5 @@
 # Vscode Update
+[![CodeQL Python Security Scan](https://github.com/LuisGomes18/Vscode-Update/actions/workflows/codeql.yml/badge.svg)](https://github.com/LuisGomes18/Vscode-Update/actions/workflows/codeql.yml)
 
 ## Description
 
