@@ -2,13 +2,13 @@ name: "CodeQL Python Security Scan"
 
 on:
   push:
-    branches:
-      - "**" 
+    paths:
+      - "**.py"  
   pull_request:
-    branches:
-      - "**" 
+    paths:
+      - "**.py" 
   schedule:
-    - cron: '19 20 * * 6'  
+    - cron: '19 20 * * 6' 
 
 jobs:
   analyze:
