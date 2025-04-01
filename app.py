@@ -4,7 +4,6 @@ import subprocess
 import shutil
 import tarfile
 import zipfile
-from extras.extract_tar import extract_tar
 
 
 if not os.geteuid() == 0:
@@ -117,21 +116,34 @@ except subprocess.CalledProcessError as error:
 
 print('Extracting the VSCode file')
 if system_os == 'linux':
-    with tarfile.open(absolute_file_path_with_extension, 'r:gz') as tar:
-        members = tar.getnames()
-        if members:
-            root_folder = os.path.commonprefix(members)
-            destination_tmp = os.path.join(absolute_path_temporary_folder, "VSCode")
-            extract_tar(tar, absolute_path_temporary_folder)
-            os.rename(os.path.join(absolute_path_temporary_folder, root_folder), destination_tmp)
+    with tarfile.open(absolute_file_path_with_extension, 'r') as tar_ref:
+        members = tar_ref.getmembers()
+
+        safe_members = []
+        for member in members:
+            if os.path.commonprefix([member.name, absolute_path_temporary_folder]) == absolute_path_temporary_folder:
+                safe_members.append(member)
+
+        if safe_members:
+            tar_ref.extractall(path=absolute_path_temporary_folder, members=safe_members)
+
 elif system_os in ['darwin', 'windows']:
     with zipfile.ZipFile(absolute_file_path_with_extension, 'r') as zip_ref:
         members = zip_ref.namelist()
-        if members:
-            root_folder = os.path.commonprefix(members)
+
+        safe_members = []
+        for member in members:
+            if os.path.commonprefix([member, absolute_path_temporary_folder]) == absolute_path_temporary_folder:
+                safe_members.append(member)
+
+        if safe_members:
+            root_folder = os.path.commonprefix(safe_members)
             destination_tmp = os.path.join(absolute_path_temporary_folder, "VSCode")
-            zip_ref.extractall(path=absolute_path_temporary_folder)
-            os.rename(os.path.join(absolute_path_temporary_folder, root_folder), destination_tmp)
+
+            zip_ref.extractall(path=absolute_path_temporary_folder, members=safe_members)
+
+            if root_folder:
+                os.rename(os.path.join(absolute_path_temporary_folder, root_folder), destination_tmp)
 
 
 print('Removing files and folders from the destination folder')
