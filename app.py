@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import tarfile
 import zipfile
+from extras.extract_tar import extract_tar
 
 
 if not os.geteuid() == 0:
@@ -121,7 +122,7 @@ if system_os == 'linux':
         if members:
             root_folder = os.path.commonprefix(members)
             destination_tmp = os.path.join(absolute_path_temporary_folder, "VSCode")
-            tar.extractall(path=absolute_path_temporary_folder)
+            extract_tar(tar, absolute_path_temporary_folder)
             os.rename(os.path.join(absolute_path_temporary_folder, root_folder), destination_tmp)
 elif system_os in ['darwin', 'windows']:
     with zipfile.ZipFile(absolute_file_path_with_extension, 'r') as zip_ref:
