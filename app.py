@@ -37,9 +37,12 @@ else:
     exit(1)
 
 absolute_destination_path = str(input('Enter the destination path: '))
-if not os.path.isdir(absolute_destination_path):
+while absolute_destination_path is None:
+    absolute_destination_path = str(input('Enter the destination path: '))
+
+while not os.path.isdir(absolute_destination_path):
     print('Destination folder does not exist')
-    exit(1)
+    absolute_destination_path = str(input('Enter the destination path: '))
 
 try:
     if system_os == 'windows':
