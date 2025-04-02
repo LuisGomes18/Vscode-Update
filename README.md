@@ -4,7 +4,7 @@
 
 ## Description
 
-Vscode Update is a project that automatically updates Visual Studio Code without the need for manual commands.
+Vscode Update is a project that automatically updates Visual Studio Code without the need for manual commands.<br>
 **Compatible with most operating systems**
 
 ## Technologies Used
