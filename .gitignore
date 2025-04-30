@@ -174,5 +174,8 @@ cython_debug/
 .pypirc
 
 test/
-*.txt
 opt/
+.tmp/
+*.txt
+*.zip
+*.tar.gz
