@@ -1,173 +1,58 @@
-import time
+from extras.check_paths import check_folder, check_file
+from extras.directory_mapping import create_tmp_folder, remove_tmp_folder, remove_content_destination_folder, move_file_to_destination
+from extras.check_processes import check_vscode_instances
+from extras.download_vscode import download_vscode
+from extras.handling_compressed_files import compressed_files
 import os
-import subprocess
-import shutil
-import tarfile
-import zipfile
 
 
 if not os.geteuid() == 0:
     print('The file must be executed as root')
     exit(1)
 
-system_os = os.uname().sysname.lower()
+# System Information
+operating_system = os.uname().sysname.lower()
+if operating_system not in ['linux', 'darwin', 'windows']:
+    print('The system used is not supported by the project.')
+    exit(1)
 architecture = os.uname().machine.lower()
+filename_without_extension = 'vscode'
 
+# Folder Information
 project_path = os.getcwd()
-file_name_without_extension = "VSCode"
-temporary_paste = '.tmp'
+relative_tmp_folder_path = '.tmp'
+absolute_tmp_folder_path = os.path.join(project_path, relative_tmp_folder_path)
+if check_folder(absolute_tmp_folder_path):
+    remove_tmp_folder(absolute_tmp_folder_path)
+create_tmp_folder(absolute_tmp_folder_path)
 
-if system_os == 'linux':
-    file_name_with_extension = "vscode-linux.tar.gz"
-    absolute_path_temporary_folder = f'{project_path}/{temporary_paste}'
-    absolute_file_path_with_extension = f'{absolute_path_temporary_folder}/{file_name_with_extension}'
-    absolute_path_file_without_extension = f'{absolute_path_temporary_folder}/{file_name_without_extension}'
-elif system_os == 'darwin':
-    file_name_with_extension = 'vscode-mac.zip'
-    absolute_path_temporary_folder = f'{project_path}/{temporary_paste}'
-    absolute_file_path_with_extension = f'{absolute_path_temporary_folder}/{file_name_with_extension}'
-    absolute_path_file_without_extension = f'{absolute_path_temporary_folder}/{file_name_without_extension}'
-elif system_os == 'windows':
-    file_name_with_extension = 'vscode-windows.zip'
-    absolute_path_temporary_folder = f'{project_path}\\{temporary_paste}'
-    absolute_file_path_with_extension = f'{absolute_path_temporary_folder}\\{file_name_with_extension}'
-    absolute_path_file_without_extension = f'{absolute_path_temporary_folder}\\{file_name_without_extension}'
-else:
-    print('Unknown system')
-    exit(1)
+# File Information
+filename_with_extension = None
 
-absolute_destination_path = str(input('Enter the destination path: '))
-while absolute_destination_path is None:
-    absolute_destination_path = str(input('Enter the destination path: '))
+if operating_system == 'linux':
+    filename_with_extension = 'vscode.tar.gz'
+elif operating_system == 'windows':
+    filename_with_extension = 'vscode.zip'
+elif operating_system == 'darwin':
+    filename_with_extension = 'vscode.zip'
 
-while not os.path.isdir(absolute_destination_path):
-    print('Destination folder does not exist')
-    absolute_destination_path = str(input('Enter the destination path: '))
+# Temporary paths and folders
+tmp_file_with_ext_path = os.path.join(absolute_tmp_folder_path, filename_with_extension)  # type: ignore
+tmp_file_without_ext_path = os.path.join(absolute_tmp_folder_path, filename_without_extension)
 
-try:
-    if system_os == 'windows':
-        result = subprocess.run(['tasklist', '/FI', '"IMAGENAME eq Code.exe"'], stdout=subprocess.PIPE, text=True)
-        if result.stdout.strip() != "":
-            print('An instance of VSCode is running. Please close VSCode and run the script again.')
-            exit(1)
-
-    result = subprocess.run(['pgrep', '-x', 'code'], stdout=subprocess.PIPE, text=True)
-    if result.stdout.strip() != "":
-        print('An instance of VSCode is running. Please close VSCode and run the script again.')
-        exit(1)
-except Exception as error:
-    print(f'Error when checking if there is an instance of running VSCode. Error: {error}')
-    exit(1)
-
-try:
-    print('Creating folder .TMP if it doesn\'t exist')
-    os.makedirs(absolute_path_temporary_folder, exist_ok=True)
-    os.chdir(absolute_path_temporary_folder)
-except Exception as error:
-    print(f'Error when trying to create or move to the .tmp folder: {error}')
-    exit(1)
-
-if os.path.exists(absolute_file_path_with_extension):
-    print('Removing VSCode file from temporary folder')
-    try:
-        os.remove(absolute_file_path_with_extension)
-        time.sleep(5)
-    except:
-        pass
-
-if os.path.exists(absolute_path_file_without_extension):
-    print('Removing extracted VSCode folder from temporary folder')
-    try:
-        shutil.rmtree(absolute_path_file_without_extension)
-        time.sleep(5)
-    except:
-        pass
-
-try:
-    print('Downloading the VSCode file')
-    if system_os == 'linux' and architecture == 'x86_64':
-        result = subprocess.run(
-            ['wget', '-O', file_name_with_extension, 'https://code.visualstudio.com/sha/download?build=stable&os=linux-x64'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
-    elif system_os == 'linux' and architecture == 'aarch64':
-        result = subprocess.run(
-            ['wget', '-O', file_name_with_extension, 'https://code.visualstudio.com/sha/download?build=stable&os=linux-arm64'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
-    elif system_os == 'linux' and architecture == 'aarch32':
-        result = subprocess.run(
-            ['wget', '-O', file_name_with_extension, 'https://code.visualstudio.com/sha/download?build=stable&os=linux-armhf'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
-    elif system_os == 'darwin':
-        result = subprocess.run(
-            ['wget', '-O', file_name_with_extension, 'https://code.visualstudio.com/sha/download?build=stable&os=darwin-arm64'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
-    elif system_os == 'windows':
-        result = subprocess.run(
-            ['wget', '-O', file_name_with_extension, 'https://code.visualstudio.com/sha/download?build=stable&os=win32-arm64-archive'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
-except subprocess.CalledProcessError as error:
-    print(f'ERROR when running the wget: {error.stderr.decode()}')
-    exit(1)
-
-print('Extracting the VSCode file')
-if system_os == 'linux':
-    with tarfile.open(absolute_file_path_with_extension, 'r') as tar_ref:
-        members = tar_ref.getmembers()
-
-        safe_members = []
-        for member in members:
-            if os.path.commonprefix([member.name, absolute_path_temporary_folder]) == absolute_path_temporary_folder:
-                safe_members.append(member)
-
-        if safe_members:
-            tar_ref.extractall(path=absolute_path_temporary_folder, members=safe_members)
-
-elif system_os in ['darwin', 'windows']:
-    with zipfile.ZipFile(absolute_file_path_with_extension, 'r') as zip_ref:
-        members = zip_ref.namelist()
-
-        safe_members = []
-        for member in members:
-            if os.path.commonprefix([member, absolute_path_temporary_folder]) == absolute_path_temporary_folder:
-                safe_members.append(member)
-
-        if safe_members:
-            root_folder = os.path.commonprefix(safe_members)
-            destination_tmp = os.path.join(absolute_path_temporary_folder, "VSCode")
-
-            zip_ref.extractall(path=absolute_path_temporary_folder, members=safe_members)
-
-            if root_folder:
-                os.rename(os.path.join(absolute_path_temporary_folder, root_folder), destination_tmp)
+# Destination path and folders
+absolute_destination_path = str(input('Write the destination folder: '))
+folder_check = check_folder(absolute_destination_path)
+while not folder_check:
+    absolute_destination_path = str(input('Write the destination folder: '))
+    folder_check = check_folder(absolute_destination_path)
 
 
-print('Removing files and folders from the destination folder')
-for item in os.listdir(absolute_destination_path):
-    caminho_item = os.path.join(absolute_destination_path, item)
-    if os.path.isfile(caminho_item):
-        os.remove(caminho_item)
-    elif os.path.isdir(caminho_item):
-        shutil.rmtree(caminho_item)
+# check_vscode_instances(operating_system)
+remove_content_destination_folder(absolute_destination_path)
+download_vscode(operating_system, architecture, filename_with_extension)
 
-print('Moving files to the destination folder')
-for item in os.listdir(absolute_path_file_without_extension):
-    caminho_item = os.path.join(absolute_path_file_without_extension, item)
-    item_destino = os.path.join(absolute_destination_path, item)
+compressed_files(operating_system, tmp_file_with_ext_path, tmp_file_without_ext_path)
 
-    shutil.move(caminho_item, item_destino)
-
-try:
-    time.sleep(10)
-    print('Removing .tmp folder')
-    shutil.rmtree(absolute_path_temporary_folder)
-except FileNotFoundError:
-    print('Folder .tmp not found')
-    exit(1)
-except PermissionError:
-    print('Permission denied to remove the folder')
-    exit(1)
+move_file_to_destination(tmp_file_without_ext_path, absolute_destination_path)
+remove_tmp_folder(tmp_file_without_ext_path)
