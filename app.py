@@ -4,55 +4,77 @@ from extras.check_processes import check_vscode_instances
 from extras.download_vscode import download_vscode
 from extras.handling_compressed_files import compressed_files
 import os
+import sys
 
 
-if not os.geteuid() == 0:
-    print('The file must be executed as root')
-    exit(1)
+# Permission check
+if os.geteuid() != 0:
+    print('[ERROR] This script must be executed as root.')
+    sys.exit(1)
 
-# System Information
+# System information
 operating_system = os.uname().sysname.lower()
 if operating_system not in ['linux', 'darwin', 'windows']:
-    print('The system used is not supported by the project.')
-    exit(1)
+    print('[ERROR] The operating system is not supported.')
+    sys.exit(1)
+
 architecture = os.uname().machine.lower()
 filename_without_extension = 'vscode'
 
-# Folder Information
+print(f'[INFO] Detected system: {operating_system}, Architecture: {architecture}')
+
+# Project paths
 project_path = os.getcwd()
 relative_tmp_folder_path = '.tmp'
 absolute_tmp_folder_path = os.path.join(project_path, relative_tmp_folder_path)
+
+# Prepare temporary folder
 if check_folder(absolute_tmp_folder_path):
+    print(f'[DEBUG] Removing existing temp folder: {absolute_tmp_folder_path}')
     remove_tmp_folder(absolute_tmp_folder_path)
+print(f'[DEBUG] Creating temp folder: {absolute_tmp_folder_path}')
 create_tmp_folder(absolute_tmp_folder_path)
 
-# File Information
-filename_with_extension = None
-
+# Define filename based on OS
 if operating_system == 'linux':
     filename_with_extension = 'vscode.tar.gz'
-elif operating_system == 'windows':
-    filename_with_extension = 'vscode.zip'
-elif operating_system == 'darwin':
+else:
     filename_with_extension = 'vscode.zip'
 
-# Temporary paths and folders
-tmp_file_with_ext_path = os.path.join(absolute_tmp_folder_path, filename_with_extension)  # type: ignore
+# Temporary file paths
+tmp_file_with_ext_path = os.path.join(absolute_tmp_folder_path, filename_with_extension)
 tmp_file_without_ext_path = os.path.join(absolute_tmp_folder_path, filename_without_extension)
 
-# Destination path and folders
-absolute_destination_path = str(input('Write the destination folder: '))
-folder_check = check_folder(absolute_destination_path)
-while not folder_check:
-    absolute_destination_path = str(input('Write the destination folder: '))
-    folder_check = check_folder(absolute_destination_path)
+# Destination folder
+absolute_destination_path = str(input('[INPUT] Enter the destination folder: '))
+while not check_folder(absolute_destination_path):
+    print('[ERROR] The folder does not exist.')
+    absolute_destination_path = str(input('[INPUT] Enter the destination folder: '))
 
+print(f'[INFO] Destination folder selected: {absolute_destination_path}')
 
-# check_vscode_instances(operating_system)
+# Check for running VSCode instance
+print('[DEBUG] Checking for running VSCode instances...')
+check_vscode_instances(operating_system)
+
+# Clean destination folder
+print(f'[INFO] Cleaning destination folder: {absolute_destination_path}')
 remove_content_destination_folder(absolute_destination_path)
+
+# Download VSCode
+print('[INFO] Downloading VSCode...')
 download_vscode(operating_system, architecture, filename_with_extension)
 
+# Extract downloaded file
+print('[INFO] Extracting downloaded archive...')
 compressed_files(operating_system, tmp_file_with_ext_path, tmp_file_without_ext_path)
 
+# Move to destination
+print('[INFO] Moving extracted files to destination folder...')
 move_file_to_destination(tmp_file_without_ext_path, absolute_destination_path)
+
+# Clean up temporary folder
+print(f'[INFO] Removing temporary folder: {tmp_file_without_ext_path}')
 remove_tmp_folder(tmp_file_without_ext_path)
+
+print('[SUCCESS] VSCode has been installed successfully!')
